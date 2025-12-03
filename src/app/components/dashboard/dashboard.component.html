@@ -1,0 +1,311 @@
+<!-- src/app/components/dashboard/dashboard.component.html -->
+<div class="dashboard-container">
+
+  <!-- Loading Spinner -->
+  <div *ngIf="cargando" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Cargando datos del dashboard...</p>
+  </div>
+
+  <!-- Header -->
+  <header class="dashboard-header">
+    <div class="header-content">
+      <div class="header-title">
+        <h1>Dashboard Empresarial</h1>
+        <p class="subtitle">Integración de APIs: Banco Popular & OpenWeather</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-refresh" (click)="actualizarDatos()">
+          <span class="material-icons">refresh</span>
+          Actualizar
+        </button>
+        <div class="last-update">
+          <span class="material-icons">schedule</span>
+          <span>{{ ultimaActualizacion | date:'short' }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPIs Grid -->
+  <section class="kpis-section">
+    <div class="kpis-grid">
+      <div *ngFor="let kpi of kpis" class="kpi-card">
+        <div class="kpi-header">
+          <span class="material-icons kpi-icon">{{ kpi.icono }}</span>
+          <h3>{{ kpi.titulo }}</h3>
+        </div>
+        <div class="kpi-content">
+          <p class="kpi-valor">{{ kpi.valor }}</p>
+          <p class="kpi-cambio" [ngClass]="{
+            'positive': kpi.tendencia === 'up',
+            'negative': kpi.tendencia === 'down',
+            'neutral': kpi.tendencia === 'neutral'
+          }">
+            <span *ngIf="kpi.tendencia === 'up'" class="material-icons">arrow_upward</span>
+            <span *ngIf="kpi.tendencia === 'down'" class="material-icons">arrow_downward</span>
+            {{ kpi.cambio }}
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tasas de Cambio Section -->
+  <section class="tasas-section">
+    <div class="section-card">
+      <div class="section-header">
+        <h2>
+          <span class="material-icons">currency_exchange</span>
+          Tasas de Cambio - Banco Popular Dominicano
+        </h2>
+      </div>
+      <div class="tasas-content">
+        <div class="tasa-principal" *ngIf="tasaActual">
+          <div class="tasa-item">
+            <span class="tasa-label">Compra</span>
+            <span class="tasa-valor">{{ tasaActual.compra | currency:'DOP':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="tasa-divider"></div>
+          <div class="tasa-item">
+            <span class="tasa-label">Venta</span>
+            <span class="tasa-valor">{{ tasaActual.venta | currency:'DOP':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="tasa-divider"></div>
+          <div class="tasa-item">
+            <span class="tasa-label">Diferencial</span>
+            <span class="tasa-valor diferencial">
+              {{ bancoService.calcularDiferencial(tasaActual.compra, tasaActual.venta) | currency:'DOP':'symbol':'1.2-2' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Tabla de histórico -->
+        <div class="tasas-historico">
+          <h3>Histórico Reciente</h3>
+          <table class="tabla-tasas">
+            <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Compra</th>
+              <th>Venta</th>
+              <th>Diferencial</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr *ngFor="let tasa of tasasCambio">
+              <td>{{ tasa.fecha | date:'short' }}</td>
+              <td>{{ tasa.compra | currency:'DOP':'symbol':'1.2-2' }}</td>
+              <td>{{ tasa.venta | currency:'DOP':'symbol':'1.2-2' }}</td>
+              <td>{{ bancoService.calcularDiferencial(tasa.compra, tasa.venta) | currency:'DOP':'symbol':'1.2-2' }}</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Clima Section -->
+  <section class="clima-section">
+    <div class="section-card">
+      <div class="section-header">
+        <h2>
+          <span class="material-icons">wb_cloudy</span>
+          Condiciones Climáticas - OpenWeather API
+        </h2>
+      </div>
+      <div class="clima-content" *ngIf="climaDatos">
+        <!-- Clima Principal -->
+        <div class="clima-principal">
+          <div class="clima-ciudad">
+            <h3>{{ climaDatos?.ciudad }}, {{ climaDatos?.pais }}</h3>
+            <img [src]="getIconoClima(climaDatos?.icono)" [alt]="climaDatos?.descripcion">
+          </div>
+          <div class="clima-temperatura">
+            <span class="temp-principal">{{ climaDatos?.temperatura }}°C</span>
+            <span class="temp-descripcion">{{ climaDatos?.descripcion }}</span>
+          </div>
+          <div class="clima-detalles">
+            <div class="detalle-item">
+              <span class="material-icons">thermostat</span>
+              <span>Sensación: {{ climaDatos?.sensacionTermica }}°C</span>
+            </div>
+            <div class="detalle-item">
+              <span class="material-icons">water_drop</span>
+              <span>Humedad: {{ climaDatos?.humedad }}%</span>
+            </div>
+            <div class="detalle-item">
+              <span class="material-icons">air</span>
+              <span>Viento: {{ climaDatos?.viento }} km/h</span>
+            </div>
+            <div class="detalle-item">
+              <span class="material-icons">compress</span>
+              <span>Presión: {{ climaDatos?.presion }} hPa</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Impacto Operacional -->
+        <div class="impacto-operacional" *ngIf="impactoClima">
+          <div class="impacto-header">
+            <span class="material-icons">analytics</span>
+            <h4>Impacto Operacional</h4>
+          </div>
+          <div class="impacto-badge" [ngClass]="'nivel-' + impactoClima.nivel">
+            <span class="material-icons">
+              {{ impactoClima.nivel === 'alto' ? 'warning' : impactoClima.nivel === 'medio' ? 'info' : 'check_circle' }}
+            </span>
+            <span>{{ impactoClima.mensaje }}</span>
+          </div>
+        </div>
+
+        <!-- Clima Múltiples Ciudades -->
+        <div class="clima-ciudades" *ngIf="climaCiudades.length > 0">
+          <h4>Otras Ubicaciones</h4>
+          <div class="ciudades-grid">
+            <div *ngFor="let clima of climaCiudades" class="ciudad-card">
+              <img [src]="getIconoClima(clima.icono)" [alt]="clima.descripcion" class="ciudad-icono">
+              <div class="ciudad-info">
+                <span class="ciudad-nombre">{{ clima.ciudad }}</span>
+                <span class="ciudad-temp">{{ clima.temperatura }}°C</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gráficos Section -->
+  <section class="graficos-section">
+    <div class="graficos-grid">
+
+      <!-- Gráfico de Ventas -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2>
+            <span class="material-icons">bar_chart</span>
+            Rendimiento Financiero Interno
+          </h2>
+        </div>
+        <div class="chart-container">
+          <canvas *ngIf="chartVentasData"
+                  baseChart
+                  [data]="chartVentasData"
+                  [options]="chartVentasOptions"
+                  [type]="'bar'">
+          </canvas>
+        </div>
+      </div>
+
+      <!-- Gráfico de Tasas -->
+      <div class="section-card">
+        <div class="section-header">
+          <h2>
+            <span class="material-icons">show_chart</span>
+            Evolución Tasas de Cambio
+          </h2>
+        </div>
+        <div class="chart-container">
+          <canvas *ngIf="chartTasasData"
+                  baseChart
+                  [data]="chartTasasData"
+                  [options]="chartTasasOptions"
+                  [type]="'line'">
+          </canvas>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Análisis Section -->
+  <section class="analisis-section">
+    <div class="section-card">
+      <div class="section-header">
+        <h2>
+          <span class="material-icons">insights</span>
+          Análisis Integrado y Toma de Decisiones
+        </h2>
+      </div>
+      <div class="analisis-content">
+        <div class="analisis-item">
+          <div class="analisis-icono">
+            <span class="material-icons">trending_up</span>
+          </div>
+          <div class="analisis-texto">
+            <h4>Rendimiento Financiero</h4>
+            <p>
+              Las ventas del mes actual muestran un crecimiento de
+              <strong>{{ datosInternos.kpis.crecimiento }}%</strong> respecto al mes anterior,
+              alcanzando <strong>{{ formatearMoneda(datosInternos.kpis.ventasMes) }}</strong>.
+              La tendencia positiva se mantiene constante desde hace 3 meses.
+            </p>
+          </div>
+        </div>
+
+        <div class="analisis-item">
+          <div class="analisis-icono">
+            <span class="material-icons">currency_exchange</span>
+          </div>
+          <div class="analisis-texto">
+            <h4>Impacto Cambiario</h4>
+            <p>
+              La tasa de cambio USD/DOP está en
+              <strong>{{ tasaActual?.compra | currency:'DOP':'symbol':'1.2-2' }}</strong> (compra).
+              <span *ngIf="getTendenciaTasa() === 'up'">
+                El incremento en la tasa sugiere ajustar precios en productos importados
+                para mantener márgenes de utilidad.
+              </span>
+              <span *ngIf="getTendenciaTasa() === 'down'">
+                La disminución en la tasa puede favorecer la importación y reducción de costos.
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div class="analisis-item" *ngIf="impactoClima">
+          <div class="analisis-icono">
+            <span class="material-icons">wb_sunny</span>
+          </div>
+          <div class="analisis-texto">
+            <h4>Condiciones Operacionales</h4>
+            <p>
+              Las condiciones climáticas actuales ({{ climaDatos?.temperatura }}°C,
+              {{ climaDatos?.humedad }}% humedad) indican un
+              <strong>impacto {{ impactoClima.nivel }}</strong> en las operaciones.
+              {{ impactoClima.mensaje }}.
+            </p>
+          </div>
+        </div>
+
+        <div class="analisis-item">
+          <div class="analisis-icono">
+            <span class="material-icons">lightbulb</span>
+          </div>
+          <div class="analisis-texto">
+            <h4>Recomendaciones</h4>
+            <ul>
+              <li>Monitorear continuamente las tasas de cambio para optimizar compras internacionales</li>
+              <li>Ajustar inventarios según condiciones climáticas previstas</li>
+              <li>Capitalizar el crecimiento actual expandiendo líneas de productos rentables</li>
+              <li>Implementar estrategias de retención para los {{ datosInternos.kpis.clientesActivos }} clientes activos</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="dashboard-footer">
+    <p>Dashboard Empresarial - Proyecto de Integración de APIs</p>
+    <p class="footer-apis">
+      <span class="api-badge">Banco Popular API</span>
+      <span class="api-badge">OpenWeather API</span>
+      <span class="api-badge">Datos Internos CSV</span>
+    </p>
+  </footer>
+
+</div>

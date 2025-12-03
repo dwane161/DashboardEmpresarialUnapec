@@ -1,0 +1,593 @@
+/* src/app/components/dashboard/dashboard.component.css */
+
+/* Variables */
+:host {
+  --color-primary: #3b82f6;
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-gray-50: #f9fafb;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-600: #4b5563;
+  --color-gray-900: #111827;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Container Principal */
+.dashboard-container {
+  min-height: 100vh;
+  background: var(--color-gray-50);
+  padding: 2rem;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--color-gray-200);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Header */
+.dashboard-header {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-md);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header-title h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--color-gray-600);
+  margin: 0.5rem 0 0 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-refresh {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-refresh:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.last-update {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-gray-600);
+  font-size: 0.875rem;
+}
+
+/* KPIs Section */
+.kpis-section {
+  margin-bottom: 2rem;
+}
+
+.kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.kpi-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-md);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.kpi-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.kpi-icon {
+  font-size: 2rem;
+  color: var(--color-primary);
+}
+
+.kpi-header h3 {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+  font-weight: 500;
+  margin: 0;
+}
+
+.kpi-valor {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin: 0 0 0.5rem 0;
+}
+
+.kpi-cambio {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.kpi-cambio.positive {
+  color: var(--color-success);
+}
+
+.kpi-cambio.negative {
+  color: var(--color-danger);
+}
+
+.kpi-cambio.neutral {
+  color: var(--color-gray-600);
+}
+
+.kpi-cambio .material-icons {
+  font-size: 1rem;
+}
+
+/* Section Cards */
+.section-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 2rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--color-gray-100);
+}
+
+.section-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin: 0;
+}
+
+.section-header .material-icons {
+  color: var(--color-primary);
+  font-size: 1.75rem;
+}
+
+/* Tasas de Cambio */
+.tasas-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.tasa-principal {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.tasa-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tasa-label {
+  font-size: 0.875rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.tasa-valor {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.tasa-valor.diferencial {
+  color: #fbbf24;
+}
+
+.tasa-divider {
+  width: 1px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.tasas-historico h3 {
+  font-size: 1.25rem;
+  color: var(--color-gray-900);
+  margin-bottom: 1rem;
+}
+
+.tabla-tasas {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tabla-tasas thead {
+  background: var(--color-gray-100);
+}
+
+.tabla-tasas th,
+.tabla-tasas td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-gray-200);
+}
+
+.tabla-tasas th {
+  font-weight: 600;
+  color: var(--color-gray-900);
+}
+
+.tabla-tasas tbody tr:hover {
+  background: var(--color-gray-50);
+}
+
+/* Clima Section */
+.clima-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.clima-principal {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.clima-ciudad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.clima-ciudad h3 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.clima-ciudad img {
+  width: 80px;
+  height: 80px;
+}
+
+.clima-temperatura {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.temp-principal {
+  font-size: 3rem;
+  font-weight: 700;
+}
+
+.temp-descripcion {
+  font-size: 1rem;
+  opacity: 0.9;
+  text-transform: capitalize;
+}
+
+.clima-detalles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.detalle-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.detalle-item .material-icons {
+  font-size: 1.25rem;
+}
+
+/* Impacto Operacional */
+.impacto-operacional {
+  padding: 1.5rem;
+  background: var(--color-gray-50);
+  border-radius: 8px;
+}
+
+.impacto-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.impacto-header h4 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--color-gray-900);
+}
+
+.impacto-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.impacto-badge.nivel-bajo {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.impacto-badge.nivel-medio {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.impacto-badge.nivel-alto {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Clima Múltiples Ciudades */
+.clima-ciudades h4 {
+  font-size: 1.125rem;
+  color: var(--color-gray-900);
+  margin-bottom: 1rem;
+}
+
+.ciudades-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.ciudad-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--color-gray-50);
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.ciudad-card:hover {
+  transform: scale(1.05);
+}
+
+.ciudad-icono {
+  width: 50px;
+  height: 50px;
+}
+
+.ciudad-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.ciudad-nombre {
+  font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+
+.ciudad-temp {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+}
+
+/* Gráficos */
+.graficos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 2rem;
+}
+
+.chart-container {
+  position: relative;
+  height: 350px;
+  padding: 1rem 0;
+}
+
+/* Análisis Section */
+.analisis-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.analisis-item {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: var(--color-gray-50);
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.analisis-item:hover {
+  transform: translateX(8px);
+}
+
+.analisis-icono {
+  flex-shrink: 0;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+}
+
+.analisis-icono .material-icons {
+  font-size: 1.75rem;
+}
+
+.analisis-texto h4 {
+  margin: 0 0 0.75rem 0;
+  color: var(--color-gray-900);
+  font-size: 1.125rem;
+}
+
+.analisis-texto p {
+  margin: 0;
+  color: var(--color-gray-600);
+  line-height: 1.6;
+}
+
+.analisis-texto ul {
+  margin: 0.5rem 0 0 0;
+  padding-left: 1.5rem;
+  color: var(--color-gray-600);
+  line-height: 1.8;
+}
+
+/* Footer */
+.dashboard-footer {
+  margin-top: 3rem;
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-gray-600);
+}
+
+.footer-apis {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.api-badge {
+  padding: 0.5rem 1rem;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .header-actions {
+    flex-direction: column;
+  }
+
+  .kpis-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tasa-principal {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .tasa-divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .graficos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clima-principal {
+    grid-template-columns: 1fr;
+  }
+
+  .analisis-item {
+    flex-direction: column;
+  }
+}
