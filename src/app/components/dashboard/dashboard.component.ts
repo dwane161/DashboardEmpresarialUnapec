@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, effect } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { interval, Subscription } from 'rxjs';
+import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import {BancoPopularService, TasaCambio} from '../../banco-popular.service';
-import {DatosClima, WeatherService} from '../../weather.service';
-import {CurrencyPipe, DatePipe, NgClass, NgIf} from '@angular/common';
-import {BaseChartDirective} from 'ng2-charts';
+import {BancoPopularService, TasaCambio} from '../../services/banco-popular.service';
+import {DatosClima, WeatherService} from '../../services/weather.service';
+
 
 interface KPI {
   titulo: string;
@@ -26,26 +27,26 @@ interface DatosInternos {
 
 @Component({
   selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule, BaseChartDirective],
   templateUrl: './dashboard.component.html',
-  imports: [
-    DatePipe,
-    CurrencyPipe,
-    NgClass,
-    BaseChartDirective,
-    NgIf
-  ],
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  // Estado de carga
-  cargando = true;
-  ultimaActualizacion = new Date();
+  // Signals de Angular 20 para estado reactivo
+  cargando = signal(true);
+  ultimaActualizacion = signal(new Date());
+  tasasCambio = signal<TasaCambio[]>([]);
+  climaDatos = signal<DatosClima | undefined>(undefined);
+  climaCiudades = signal<DatosClima[]>([]);
+  kpis = signal<KPI[]>([]);
 
-  // Datos de APIs
-  tasasCambio: TasaCambio[] = [];
-  tasaActual?: TasaCambio;
-  climaDatos?: DatosClima;
-  impactoClima?: any;
+  // Computed signals
+  tasaActual = computed(() => this.tasasCambio()[0]);
+  impactoClima = computed(() => {
+    const clima = this.climaDatos();
+    return clima ? this.weatherService.getImpactoOperacional(clima) : null;
+  });
 
   // Datos internos
   datosInternos: DatosInternos = {
@@ -58,27 +59,52 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   };
 
-  // KPIs para mostrar
-  kpis: KPI[] = [];
-
   // Configuración de gráficos
-  chartVentasData?: ChartData<'bar'>;
-  chartTasasData?: ChartData<'line'>;
-  chartVentasOptions: ChartConfiguration['options'];
-  chartTasasOptions: ChartConfiguration['options'];
+  chartVentasData = signal<ChartData<'bar'> | undefined>(undefined);
+  chartTasasData = signal<ChartData<'line'> | undefined>(undefined);
+
+  chartVentasOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'top' },
+      title: { display: true, text: 'Rendimiento Financiero Mensual' }
+    },
+    scales: {
+      y: { beginAtZero: true }
+    }
+  };
+
+  chartTasasOptions: ChartConfiguration['options'] = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'top' },
+      title: { display: true, text: 'Evolución Tasas de Cambio USD/DOP' }
+    },
+    scales: {
+      y: { beginAtZero: false }
+    }
+  };
 
   // Suscripciones
   private subscriptions: Subscription[] = [];
 
   // Ciudades para monitorear clima
   ciudadesMonitoreo = ['Santo Domingo', 'Santiago', 'La Romana'];
-  climaCiudades: DatosClima[] = [];
 
   constructor(
     public bancoService: BancoPopularService,
     public weatherService: WeatherService
   ) {
-    this.inicializarOpcionesGraficos();
+    // Effect para logging (Angular 20)
+    effect(() => {
+      console.log('Datos actualizados:', {
+        tasas: this.tasasCambio().length,
+        clima: this.climaDatos()?.ciudad,
+        timestamp: this.ultimaActualizacion()
+      });
+    });
   }
 
   ngOnInit(): void {
@@ -90,11 +116,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach(sub => sub.unsubscribe());
   }
 
-  /**
-   * Carga todos los datos del dashboard
-   */
   async cargarDatosIniciales(): Promise<void> {
-    this.cargando = true;
+    this.cargando.set(true);
 
     try {
       // Generar datos internos simulados
@@ -112,64 +135,48 @@ export class DashboardComponent implements OnInit, OnDestroy {
       // Generar gráficos
       this.generarGraficos();
 
-      this.ultimaActualizacion = new Date();
+      this.ultimaActualizacion.set(new Date());
     } catch (error) {
       console.error('Error cargando datos:', error);
     } finally {
-      this.cargando = false;
+      this.cargando.set(false);
     }
   }
 
-  /**
-   * Carga las tasas de cambio del Banco Popular
-   */
   async cargarTasasCambio(): Promise<void> {
     try {
-      // Intentar con API real
-      this.tasasCambio = await this.bancoService.getTasasCambio().toPromise() || [];
+      const tasas = await this.bancoService.getTasasCambio().toPromise() || [];
 
-      // Si no hay datos, usar simulados
-      if (this.tasasCambio.length === 0) {
-        this.tasasCambio = await this.bancoService.getTasasSimuladas().toPromise() || [];
+      if (tasas.length === 0) {
+        const tasasSimuladas = await this.bancoService.getTasasSimuladas().toPromise() || [];
+        this.tasasCambio.set(tasasSimuladas);
+      } else {
+        this.tasasCambio.set(tasas);
       }
-
-      this.tasaActual = this.tasasCambio[0];
     } catch (error) {
       console.error('Error cargando tasas:', error);
-      // Usar datos simulados en caso de error
-      this.tasasCambio = await this.bancoService.getTasasSimuladas().toPromise() || [];
-      this.tasaActual = this.tasasCambio[0];
+      const tasasSimuladas = await this.bancoService.getTasasSimuladas().toPromise() || [];
+      this.tasasCambio.set(tasasSimuladas);
     }
   }
 
-  /**
-   * Carga los datos del clima
-   */
   async cargarDatosClima(): Promise<void> {
     try {
-      // Cargar clima de Santo Domingo (ciudad principal)
-      this.climaDatos = await this.weatherService.getClimaPorCiudad('Santo Domingo').toPromise();
+      const clima = await this.weatherService.getClimaPorCiudad('Santo Domingo').toPromise();
+      this.climaDatos.set(clima);
 
-      if (this.climaDatos) {
-        this.impactoClima = this.weatherService.getImpactoOperacional(this.climaDatos);
-      }
-
-      // Cargar clima de múltiples ciudades
-      this.climaCiudades = await this.weatherService.getClimaMultiplesCiudades(this.ciudadesMonitoreo).toPromise() || [];
+      const climaCiudades = await this.weatherService.getClimaMultiplesCiudades(
+        this.ciudadesMonitoreo
+      ).toPromise() || [];
+      this.climaCiudades.set(climaCiudades);
 
     } catch (error) {
       console.error('Error cargando clima:', error);
-      // Usar datos simulados
-      this.climaDatos = await this.weatherService.getClimaSimulado().toPromise();
-      if (this.climaDatos) {
-        this.impactoClima = this.weatherService.getImpactoOperacional(this.climaDatos);
-      }
+      const climaSimulado = await this.weatherService.getClimaSimulado().toPromise();
+      this.climaDatos.set(climaSimulado);
     }
   }
 
-  /**
-   * Genera datos internos simulados (ventas, clientes, etc.)
-   */
   generarDatosInternos(): void {
     this.datosInternos = {
       ventas: [
@@ -189,11 +196,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
   }
 
-  /**
-   * Actualiza los KPIs principales
-   */
   actualizarKPIs(): void {
-    this.kpis = [
+    const tasaActual = this.tasaActual();
+    const clima = this.climaDatos();
+
+    this.kpis.set([
       {
         titulo: 'Ventas del Mes',
         valor: `$${(this.datosInternos.kpis.ventasMes / 1000).toFixed(0)}K`,
@@ -203,15 +210,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
       },
       {
         titulo: 'Tasa USD (Compra)',
-        valor: `$${this.tasaActual?.compra.toFixed(2) || '0.00'}`,
+        valor: `$${tasaActual?.compra.toFixed(2) || '0.00'}`,
         cambio: this.calcularVariacionTasa(),
         tendencia: this.getTendenciaTasa(),
         icono: 'attach_money'
       },
       {
         titulo: 'Temperatura',
-        valor: `${this.climaDatos?.temperatura || 0}°C`,
-        cambio: this.climaDatos?.descripcion || '',
+        valor: `${clima?.temperatura || 0}°C`,
+        cambio: clima?.descripcion || '',
         tendencia: 'neutral',
         icono: 'wb_sunny'
       },
@@ -222,15 +229,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
         tendencia: 'up',
         icono: 'people'
       }
-    ];
+    ]);
   }
 
-  /**
-   * Genera los gráficos del dashboard
-   */
   generarGraficos(): void {
     // Gráfico de ventas
-    this.chartVentasData = {
+    this.chartVentasData.set({
       labels: this.datosInternos.ventas.map(v => v.mes),
       datasets: [
         {
@@ -249,64 +253,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
           backgroundColor: '#10b981'
         }
       ]
-    };
+    });
 
     // Gráfico de tasas de cambio
-    if (this.tasasCambio.length > 0) {
-      this.chartTasasData = {
-        labels: this.tasasCambio.map(t => new Date(t.fecha).toLocaleDateString()),
+    const tasas = this.tasasCambio();
+    if (tasas.length > 0) {
+      this.chartTasasData.set({
+        labels: tasas.map(t => new Date(t.fecha).toLocaleDateString()),
         datasets: [
           {
             label: 'Tasa Compra',
-            data: this.tasasCambio.map(t => t.compra),
+            data: tasas.map(t => t.compra),
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            tension: 0.4
+            tension: 0.4,
+            fill: true
           },
           {
             label: 'Tasa Venta',
-            data: this.tasasCambio.map(t => t.venta),
+            data: tasas.map(t => t.venta),
             borderColor: '#10b981',
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            tension: 0.4
+            tension: 0.4,
+            fill: true
           }
         ]
-      };
+      });
     }
   }
 
-  /**
-   * Configura las opciones de los gráficos
-   */
-  inicializarOpcionesGraficos(): void {
-    this.chartVentasOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: true, position: 'top' },
-        title: { display: true, text: 'Rendimiento Financiero Mensual' }
-      },
-      scales: {
-        y: { beginAtZero: true }
-      }
-    };
-
-    this.chartTasasOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: true, position: 'top' },
-        title: { display: true, text: 'Evolución Tasas de Cambio USD/DOP' }
-      },
-      scales: {
-        y: { beginAtZero: false }
-      }
-    };
-  }
-
-  /**
-   * Configura actualización automática cada 5 minutos
-   */
   configurarActualizacionAutomatica(): void {
     const sub = interval(300000).subscribe(() => {
       this.actualizarDatos();
@@ -314,50 +289,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.subscriptions.push(sub);
   }
 
-  /**
-   * Actualiza los datos manualmente
-   */
   actualizarDatos(): void {
     this.cargarDatosIniciales();
   }
 
-  /**
-   * Calcula la variación de la tasa
-   */
   calcularVariacionTasa(): string {
-    if (this.tasasCambio.length < 2) return '+0.00%';
+    const tasas = this.tasasCambio();
+    if (tasas.length < 2) return '+0.00%';
 
-    const actual = this.tasasCambio[0].compra;
-    const anterior = this.tasasCambio[1].compra;
+    const actual = tasas[0].compra;
+    const anterior = tasas[1].compra;
     const variacion = this.bancoService.calcularVariacion(actual, anterior);
 
     return `${variacion >= 0 ? '+' : ''}${variacion.toFixed(2)}%`;
   }
 
-  /**
-   * Determina la tendencia de la tasa
-   */
   getTendenciaTasa(): 'up' | 'down' | 'neutral' {
-    if (this.tasasCambio.length < 2) return 'neutral';
+    const tasas = this.tasasCambio();
+    if (tasas.length < 2) return 'neutral';
 
-    const actual = this.tasasCambio[0].compra;
-    const anterior = this.tasasCambio[1].compra;
+    const actual = tasas[0].compra;
+    const anterior = tasas[1].compra;
 
     if (actual > anterior) return 'up';
     if (actual < anterior) return 'down';
     return 'neutral';
   }
 
-  /**
-   * Obtiene la URL del icono del clima
-   */
   getIconoClima(icono: string): string {
     return this.weatherService.getIconoUrl(icono);
   }
 
-  /**
-   * Formatea números a moneda
-   */
   formatearMoneda(valor: number): string {
     return new Intl.NumberFormat('es-DO', {
       style: 'currency',

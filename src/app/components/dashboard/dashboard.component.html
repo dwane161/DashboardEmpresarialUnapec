@@ -2,10 +2,12 @@
 <div class="dashboard-container">
 
   <!-- Loading Spinner -->
-  <div *ngIf="cargando" class="loading-overlay">
-    <div class="spinner"></div>
-    <p>Cargando datos del dashboard...</p>
-  </div>
+  @if (cargando()) {
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Cargando datos del dashboard...</p>
+    </div>
+  }
 
   <!-- Header -->
   <header class="dashboard-header">
@@ -21,7 +23,7 @@
         </button>
         <div class="last-update">
           <span class="material-icons">schedule</span>
-          <span>{{ ultimaActualizacion | date:'short' }}</span>
+          <span>{{ ultimaActualizacion() | date:'short' }}</span>
         </div>
       </div>
     </div>
@@ -30,24 +32,30 @@
   <!-- KPIs Grid -->
   <section class="kpis-section">
     <div class="kpis-grid">
-      <div *ngFor="let kpi of kpis" class="kpi-card">
-        <div class="kpi-header">
-          <span class="material-icons kpi-icon">{{ kpi.icono }}</span>
-          <h3>{{ kpi.titulo }}</h3>
+      @for (kpi of kpis(); track kpi.titulo) {
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="material-icons kpi-icon">{{ kpi.icono }}</span>
+            <h3>{{ kpi.titulo }}</h3>
+          </div>
+          <div class="kpi-content">
+            <p class="kpi-valor">{{ kpi.valor }}</p>
+            <p class="kpi-cambio" [ngClass]="{
+              'positive': kpi.tendencia === 'up',
+              'negative': kpi.tendencia === 'down',
+              'neutral': kpi.tendencia === 'neutral'
+            }">
+              @if (kpi.tendencia === 'up') {
+                <span class="material-icons">arrow_upward</span>
+              }
+              @if (kpi.tendencia === 'down') {
+                <span class="material-icons">arrow_downward</span>
+              }
+              {{ kpi.cambio }}
+            </p>
+          </div>
         </div>
-        <div class="kpi-content">
-          <p class="kpi-valor">{{ kpi.valor }}</p>
-          <p class="kpi-cambio" [ngClass]="{
-            'positive': kpi.tendencia === 'up',
-            'negative': kpi.tendencia === 'down',
-            'neutral': kpi.tendencia === 'neutral'
-          }">
-            <span *ngIf="kpi.tendencia === 'up'" class="material-icons">arrow_upward</span>
-            <span *ngIf="kpi.tendencia === 'down'" class="material-icons">arrow_downward</span>
-            {{ kpi.cambio }}
-          </p>
-        </div>
-      </div>
+      }
     </div>
   </section>
 
@@ -61,24 +69,26 @@
         </h2>
       </div>
       <div class="tasas-content">
-        <div class="tasa-principal" *ngIf="tasaActual">
-          <div class="tasa-item">
-            <span class="tasa-label">Compra</span>
-            <span class="tasa-valor">{{ tasaActual.compra | currency:'DOP':'symbol':'1.2-2' }}</span>
+        @if (tasaActual(); as tasa) {
+          <div class="tasa-principal">
+            <div class="tasa-item">
+              <span class="tasa-label">Compra</span>
+              <span class="tasa-valor">{{ tasa.compra | currency:'DOP':'symbol':'1.2-2' }}</span>
+            </div>
+            <div class="tasa-divider"></div>
+            <div class="tasa-item">
+              <span class="tasa-label">Venta</span>
+              <span class="tasa-valor">{{ tasa.venta | currency:'DOP':'symbol':'1.2-2' }}</span>
+            </div>
+            <div class="tasa-divider"></div>
+            <div class="tasa-item">
+              <span class="tasa-label">Diferencial</span>
+              <span class="tasa-valor diferencial">
+                {{ bancoService.calcularDiferencial(tasa.compra, tasa.venta) | currency:'DOP':'symbol':'1.2-2' }}
+              </span>
+            </div>
           </div>
-          <div class="tasa-divider"></div>
-          <div class="tasa-item">
-            <span class="tasa-label">Venta</span>
-            <span class="tasa-valor">{{ tasaActual.venta | currency:'DOP':'symbol':'1.2-2' }}</span>
-          </div>
-          <div class="tasa-divider"></div>
-          <div class="tasa-item">
-            <span class="tasa-label">Diferencial</span>
-            <span class="tasa-valor diferencial">
-              {{ bancoService.calcularDiferencial(tasaActual.compra, tasaActual.venta) | currency:'DOP':'symbol':'1.2-2' }}
-            </span>
-          </div>
-        </div>
+        }
 
         <!-- Tabla de histórico -->
         <div class="tasas-historico">
@@ -93,12 +103,14 @@
             </tr>
             </thead>
             <tbody>
-            <tr *ngFor="let tasa of tasasCambio">
-              <td>{{ tasa.fecha | date:'short' }}</td>
-              <td>{{ tasa.compra | currency:'DOP':'symbol':'1.2-2' }}</td>
-              <td>{{ tasa.venta | currency:'DOP':'symbol':'1.2-2' }}</td>
-              <td>{{ bancoService.calcularDiferencial(tasa.compra, tasa.venta) | currency:'DOP':'symbol':'1.2-2' }}</td>
-            </tr>
+              @for (tasa of tasasCambio(); track tasa.fecha) {
+                <tr>
+                  <td>{{ tasa.fecha | date:'short' }}</td>
+                  <td>{{ tasa.compra | currency:'DOP':'symbol':'1.2-2' }}</td>
+                  <td>{{ tasa.venta | currency:'DOP':'symbol':'1.2-2' }}</td>
+                  <td>{{ bancoService.calcularDiferencial(tasa.compra, tasa.venta) | currency:'DOP':'symbol':'1.2-2' }}</td>
+                </tr>
+              }
             </tbody>
           </table>
         </div>
@@ -115,65 +127,73 @@
           Condiciones Climáticas - OpenWeather API
         </h2>
       </div>
-      <div class="clima-content" *ngIf="climaDatos">
-        <!-- Clima Principal -->
-        <div class="clima-principal">
-          <div class="clima-ciudad">
-            <h3>{{ climaDatos?.ciudad }}, {{ climaDatos?.pais }}</h3>
-            <img [src]="getIconoClima(climaDatos?.icono)" [alt]="climaDatos?.descripcion">
-          </div>
-          <div class="clima-temperatura">
-            <span class="temp-principal">{{ climaDatos?.temperatura }}°C</span>
-            <span class="temp-descripcion">{{ climaDatos?.descripcion }}</span>
-          </div>
-          <div class="clima-detalles">
-            <div class="detalle-item">
-              <span class="material-icons">thermostat</span>
-              <span>Sensación: {{ climaDatos?.sensacionTermica }}°C</span>
+      @if (climaDatos(); as clima) {
+        <div class="clima-content">
+          <!-- Clima Principal -->
+          <div class="clima-principal">
+            <div class="clima-ciudad">
+              <h3>{{ clima.ciudad }}, {{ clima.pais }}</h3>
+              <img [src]="getIconoClima(clima.icono)" [alt]="clima.descripcion">
             </div>
-            <div class="detalle-item">
-              <span class="material-icons">water_drop</span>
-              <span>Humedad: {{ climaDatos?.humedad }}%</span>
+            <div class="clima-temperatura">
+              <span class="temp-principal">{{ clima.temperatura }}°C</span>
+              <span class="temp-descripcion">{{ clima.descripcion }}</span>
             </div>
-            <div class="detalle-item">
-              <span class="material-icons">air</span>
-              <span>Viento: {{ climaDatos?.viento }} km/h</span>
-            </div>
-            <div class="detalle-item">
-              <span class="material-icons">compress</span>
-              <span>Presión: {{ climaDatos?.presion }} hPa</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Impacto Operacional -->
-        <div class="impacto-operacional" *ngIf="impactoClima">
-          <div class="impacto-header">
-            <span class="material-icons">analytics</span>
-            <h4>Impacto Operacional</h4>
-          </div>
-          <div class="impacto-badge" [ngClass]="'nivel-' + impactoClima.nivel">
-            <span class="material-icons">
-              {{ impactoClima.nivel === 'alto' ? 'warning' : impactoClima.nivel === 'medio' ? 'info' : 'check_circle' }}
-            </span>
-            <span>{{ impactoClima.mensaje }}</span>
-          </div>
-        </div>
-
-        <!-- Clima Múltiples Ciudades -->
-        <div class="clima-ciudades" *ngIf="climaCiudades.length > 0">
-          <h4>Otras Ubicaciones</h4>
-          <div class="ciudades-grid">
-            <div *ngFor="let clima of climaCiudades" class="ciudad-card">
-              <img [src]="getIconoClima(clima.icono)" [alt]="clima.descripcion" class="ciudad-icono">
-              <div class="ciudad-info">
-                <span class="ciudad-nombre">{{ clima.ciudad }}</span>
-                <span class="ciudad-temp">{{ clima.temperatura }}°C</span>
+            <div class="clima-detalles">
+              <div class="detalle-item">
+                <span class="material-icons">thermostat</span>
+                <span>Sensación: {{ clima.sensacionTermica }}°C</span>
+              </div>
+              <div class="detalle-item">
+                <span class="material-icons">water_drop</span>
+                <span>Humedad: {{ clima.humedad }}%</span>
+              </div>
+              <div class="detalle-item">
+                <span class="material-icons">air</span>
+                <span>Viento: {{ clima.viento }} km/h</span>
+              </div>
+              <div class="detalle-item">
+                <span class="material-icons">compress</span>
+                <span>Presión: {{ clima.presion }} hPa</span>
               </div>
             </div>
           </div>
+
+          <!-- Impacto Operacional -->
+          @if (impactoClima(); as impacto) {
+            <div class="impacto-operacional">
+              <div class="impacto-header">
+                <span class="material-icons">analytics</span>
+                <h4>Impacto Operacional</h4>
+              </div>
+              <div class="impacto-badge" [ngClass]="'nivel-' + impacto.nivel">
+                <span class="material-icons">
+                  {{ impacto.nivel === 'alto' ? 'warning' : impacto.nivel === 'medio' ? 'info' : 'check_circle' }}
+                </span>
+                <span>{{ impacto.mensaje }}</span>
+              </div>
+            </div>
+          }
+
+          <!-- Clima Múltiples Ciudades -->
+          @if (climaCiudades().length > 0) {
+            <div class="clima-ciudades">
+              <h4>Otras Ubicaciones</h4>
+              <div class="ciudades-grid">
+                @for (ciudadClima of climaCiudades(); track ciudadClima.ciudad) {
+                  <div class="ciudad-card">
+                    <img [src]="getIconoClima(ciudadClima.icono)" [alt]="ciudadClima.descripcion" class="ciudad-icono">
+                    <div class="ciudad-info">
+                      <span class="ciudad-nombre">{{ ciudadClima.ciudad }}</span>
+                      <span class="ciudad-temp">{{ ciudadClima.temperatura }}°C</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         </div>
-      </div>
+      }
     </div>
   </section>
 
@@ -190,12 +210,14 @@
           </h2>
         </div>
         <div class="chart-container">
-          <canvas *ngIf="chartVentasData"
-                  baseChart
-                  [data]="chartVentasData"
-                  [options]="chartVentasOptions"
-                  [type]="'bar'">
-          </canvas>
+          @if (chartVentasData(); as ventasData) {
+            <canvas
+              baseChart
+              [data]="ventasData"
+              [options]="chartVentasOptions"
+              [type]="'bar'">
+            </canvas>
+          }
         </div>
       </div>
 
@@ -208,12 +230,14 @@
           </h2>
         </div>
         <div class="chart-container">
-          <canvas *ngIf="chartTasasData"
-                  baseChart
-                  [data]="chartTasasData"
-                  [options]="chartTasasOptions"
-                  [type]="'line'">
-          </canvas>
+          @if (chartTasasData(); as tasasData) {
+            <canvas
+              baseChart
+              [data]="tasasData"
+              [options]="chartTasasOptions"
+              [type]="'line'">
+            </canvas>
+          }
         </div>
       </div>
 
@@ -253,32 +277,38 @@
             <h4>Impacto Cambiario</h4>
             <p>
               La tasa de cambio USD/DOP está en
-              <strong>{{ tasaActual?.compra | currency:'DOP':'symbol':'1.2-2' }}</strong> (compra).
-              <span *ngIf="getTendenciaTasa() === 'up'">
-                El incremento en la tasa sugiere ajustar precios en productos importados
-                para mantener márgenes de utilidad.
-              </span>
-              <span *ngIf="getTendenciaTasa() === 'down'">
-                La disminución en la tasa puede favorecer la importación y reducción de costos.
-              </span>
+              <strong>{{ tasaActual()?.compra | currency:'DOP':'symbol':'1.2-2' }}</strong> (compra).
+              @if (getTendenciaTasa() === 'up') {
+                <span>
+                  El incremento en la tasa sugiere ajustar precios en productos importados
+                  para mantener márgenes de utilidad.
+                </span>
+              }
+              @if (getTendenciaTasa() === 'down') {
+                <span>
+                  La disminución en la tasa puede favorecer la importación y reducción de costos.
+                </span>
+              }
             </p>
           </div>
         </div>
 
-        <div class="analisis-item" *ngIf="impactoClima">
-          <div class="analisis-icono">
-            <span class="material-icons">wb_sunny</span>
+        @if (impactoClima(); as impacto) {
+          <div class="analisis-item">
+            <div class="analisis-icono">
+              <span class="material-icons">wb_sunny</span>
+            </div>
+            <div class="analisis-texto">
+              <h4>Condiciones Operacionales</h4>
+              <p>
+                Las condiciones climáticas actuales ({{ climaDatos()?.temperatura }}°C,
+                {{ climaDatos()?.humedad }}% humedad) indican un
+                <strong>impacto {{ impacto.nivel }}</strong> en las operaciones.
+                {{ impacto.mensaje }}.
+              </p>
+            </div>
           </div>
-          <div class="analisis-texto">
-            <h4>Condiciones Operacionales</h4>
-            <p>
-              Las condiciones climáticas actuales ({{ climaDatos?.temperatura }}°C,
-              {{ climaDatos?.humedad }}% humedad) indican un
-              <strong>impacto {{ impactoClima.nivel }}</strong> en las operaciones.
-              {{ impactoClima.mensaje }}.
-            </p>
-          </div>
-        </div>
+        }
 
         <div class="analisis-item">
           <div class="analisis-icono">
